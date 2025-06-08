@@ -6,248 +6,270 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  RefreshControl,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
 export default function DashboardScreen() {
   const [habits, setHabits] = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [userData, setUserData] = useState(null);
+  const [todayStats, setTodayStats] = useState({
+    completed: 0,
+    total: 0,
+    streak: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // This will run every time the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadHabits();
+    }, [])
+  );
 
-  const loadData = async () => {
+  const loadHabits = async () => {
     try {
-      const habitsData = await AsyncStorage.getItem('habits');
-      const userDataStr = await AsyncStorage.getItem('userData');
+      setIsLoading(true);
+      const storedHabits = await AsyncStorage.getItem('habits');
+      console.log('Loading habits from storage:', storedHabits); // Debug log
       
-      if (habitsData) {
-        setHabits(JSON.parse(habitsData));
-      }
-      if (userDataStr) {
-        setUserData(JSON.parse(userDataStr));
+      if (storedHabits) {
+        const parsedHabits = JSON.parse(storedHabits);
+        console.log('Parsed habits:', parsedHabits); // Debug log
+        setHabits(parsedHabits);
+        calculateTodayStats(parsedHabits);
+      } else {
+        console.log('No habits found in storage, using sample data');
+        // Initialize with empty array instead of sample data
+        setHabits([]);
+        setTodayStats({ completed: 0, total: 0, streak: 0 });
       }
     } catch (error) {
-      console.log('Error loading data:', error);
+      console.log('Error loading habits:', error);
+      Alert.alert('Error', 'Failed to load habits. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+  const calculateTodayStats = (habitsList) => {
+    if (habitsList.length === 0) {
+      setTodayStats({ completed: 0, total: 0, streak: 0 });
+      return;
+    }
+
+    const completed = habitsList.filter(habit => habit.completedToday).length;
+    const total = habitsList.length;
+    const avgStreak = habitsList.reduce((sum, habit) => sum + habit.streak, 0) / habitsList.length;
+    
+    setTodayStats({
+      completed,
+      total,
+      streak: Math.round(avgStreak || 0),
+    });
   };
 
   const toggleHabitCompletion = async (habitId) => {
-    const today = new Date().toDateString();
-    const updatedHabits = habits.map(habit => {
-      if (habit.id === habitId) {
-        const completedDates = habit.completedDates || [];
-        const isCompletedToday = completedDates.includes(today);
-        
-        return {
-          ...habit,
-          completedDates: isCompletedToday
-            ? completedDates.filter(date => date !== today)
-            : [...completedDates, today],
-        };
-      }
-      return habit;
-    });
-    
-    setHabits(updatedHabits);
-    await AsyncStorage.setItem('habits', JSON.stringify(updatedHabits));
-  };
-
-  const getStreakCount = (habit) => {
-    if (!habit.completedDates || habit.completedDates.length === 0) return 0;
-    
-    const dates = habit.completedDates.sort((a, b) => new Date(b) - new Date(a));
-    let streak = 0;
-    let currentDate = new Date();
-    
-    for (let dateStr of dates) {
-      const date = new Date(dateStr);
-      const diffTime = Math.abs(currentDate - date);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    try {
+      const updatedHabits = habits.map(habit => {
+        if (habit.id === habitId) {
+          const newCompletedStatus = !habit.completedToday;
+          return {
+            ...habit,
+            completedToday: newCompletedStatus,
+            streak: newCompletedStatus ? habit.streak + 1 : Math.max(0, habit.streak - 1),
+          };
+        }
+        return habit;
+      });
       
-      if (diffDays <= streak + 1) {
-        streak++;
-        currentDate = date;
-      } else {
-        break;
-      }
+      setHabits(updatedHabits);
+      calculateTodayStats(updatedHabits);
+      await AsyncStorage.setItem('habits', JSON.stringify(updatedHabits));
+      
+      // Show feedback
+      const habit = habits.find(h => h.id === habitId);
+      const message = habit.completedToday 
+        ? `Great job! You've completed ${habit.name}!` 
+        : `${habit.name} marked as incomplete`;
+      
+      Alert.alert('Habit Updated', message);
+    } catch (error) {
+      console.log('Error updating habit:', error);
+      Alert.alert('Error', 'Failed to update habit. Please try again.');
     }
-    
-    return streak;
-  };
-
-  const getCompletionRate = (habit) => {
-    if (!habit.completedDates || habit.createdAt === undefined) return 0;
-    
-    const createdDate = new Date(habit.createdAt);
-    const today = new Date();
-    const daysSinceCreated = Math.ceil((today - createdDate) / (1000 * 60 * 60 * 24)) + 1;
-    
-    return Math.round((habit.completedDates.length / daysSinceCreated) * 100);
-  };
-
-  const isCompletedToday = (habit) => {
-    const today = new Date().toDateString();
-    return habit.completedDates && habit.completedDates.includes(today);
   };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
   };
 
-  const getTodayStats = () => {
-    const completedToday = habits.filter(habit => isCompletedToday(habit)).length;
-    const totalHabits = habits.length;
-    return { completed: completedToday, total: totalHabits };
-  };
+  const renderStatCard = (title, value, subtitle, icon, color) => (
+    <View style={[styles.statCard, { borderLeftColor: color }]}>
+      <View style={[styles.statIcon, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={24} color={color} />
+      </View>
+      <View style={styles.statContent}>
+        <Text style={styles.statValue}>{value}</Text>
+        <Text style={styles.statTitle}>{title}</Text>
+        {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
+      </View>
+    </View>
+  );
 
-  const stats = getTodayStats();
+  const renderHabitCard = (habit) => (
+    <TouchableOpacity
+      key={habit.id}
+      style={[styles.habitCard, habit.completedToday && styles.habitCardCompleted]}
+      onPress={() => toggleHabitCompletion(habit.id)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.habitHeader}>
+        <View style={[styles.habitIcon, { backgroundColor: habit.color + '20' }]}>
+          <Ionicons name={habit.icon} size={24} color={habit.color} />
+        </View>
+        <View style={styles.habitInfo}>
+          <Text style={styles.habitName}>{habit.name}</Text>
+          <Text style={styles.habitCategory}>{habit.category || 'General'}</Text>
+        </View>
+        <View style={styles.habitStatus}>
+          <Ionicons
+            name={habit.completedToday ? 'checkmark-circle' : 'ellipse-outline'}
+            size={32}
+            color={habit.completedToday ? '#27ae60' : '#bdc3c7'}
+          />
+        </View>
+      </View>
+      
+      <View style={styles.habitDetails}>
+        <View style={styles.habitTarget}>
+          <Text style={styles.habitTargetText}>
+            Target: {habit.target || 1} {habit.unit || 'time(s)'}
+          </Text>
+        </View>
+        <View style={styles.habitStreak}>
+          <Ionicons name="flame" size={16} color="#f39c12" />
+          <Text style={styles.habitStreakText}>{habit.streak || 0} day streak</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const completionPercentage = todayStats.total > 0 
+    ? Math.round((todayStats.completed / todayStats.total) * 100) 
+    : 0;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Ionicons name="hourglass" size={48} color="#666" />
+        <Text style={styles.loadingText}>Loading your habits...</Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Header Section */}
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>
-          {getGreeting()}, {userData?.firstName || 'User'}!
-        </Text>
-        <Text style={styles.date}>
-          {new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
+        <Text style={styles.greeting}>{getGreeting()}!</Text>
+        <Text style={styles.headerSubtitle}>
+          {new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            month: 'long', 
+            day: 'numeric' 
           })}
         </Text>
       </View>
 
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+      {habits.length > 0 ? (
+        <>
+          {/* Progress Overview */}
+          <View style={styles.progressSection}>
+            <Text style={styles.sectionTitle}>Today's Progress</Text>
+            <View style={styles.progressCard}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressPercentage}>{completionPercentage}%</Text>
+                <Text style={styles.progressText}>
+                  {todayStats.completed} of {todayStats.total} habits completed
+                </Text>
+              </View>
+              <View style={styles.progressBar}>
+                <View 
+                  style={[
+                    styles.progressFill, 
+                    { width: `${completionPercentage}%` }
+                  ]} 
+                />
+              </View>
+            </View>
           </View>
-          <Text style={styles.statNumber}>{stats.completed}</Text>
-          <Text style={styles.statLabel}>Completed Today</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="trending-up" size={24} color="#2196F3" />
-          </View>
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Total Habits</Text>
-        </View>
-        
-        <View style={styles.statCard}>
-          <View style={styles.statIconContainer}>
-            <Ionicons name="flame" size={24} color="#FF9800" />
-          </View>
-          <Text style={styles.statNumber}>
-            {habits.length > 0 ? Math.max(...habits.map(h => getStreakCount(h))) : 0}
-          </Text>
-          <Text style={styles.statLabel}>Best Streak</Text>
-        </View>
-      </View>
 
-      {/* Progress Overview */}
-      {habits.length > 0 && (
-        <View style={styles.progressContainer}>
-          <Text style={styles.sectionTitle}>Today's Progress</Text>
-          <View style={styles.progressBar}>
-            <View 
-              style={[
-                styles.progressFill, 
-                { width: `${stats.total > 0 ? (stats.completed / stats.total) * 100 : 0}%` }
-              ]} 
-            />
+          {/* Stats Cards */}
+          <View style={styles.statsSection}>
+            <View style={styles.statsRow}>
+              {renderStatCard(
+                'Completed', 
+                todayStats.completed, 
+                'today', 
+                'checkmark-circle', 
+                '#27ae60'
+              )}
+              {renderStatCard(
+                'Total Habits', 
+                todayStats.total, 
+                'active', 
+                'list-circle', 
+                '#3498db'
+              )}
+            </View>
+            <View style={styles.statsRow}>
+              {renderStatCard(
+                'Average Streak', 
+                todayStats.streak, 
+                'days', 
+                'flame', 
+                '#f39c12'
+              )}
+              {renderStatCard(
+                'Success Rate', 
+                `${completionPercentage}%`, 
+                'today', 
+                'trending-up', 
+                '#9b59b6'
+              )}
+            </View>
           </View>
-          <Text style={styles.progressText}>
-            {stats.completed} of {stats.total} habits completed
+
+          {/* Habits List */}
+          <View style={styles.habitsSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Today's Habits</Text>
+              <TouchableOpacity style={styles.filterButton}>
+                <Ionicons name="filter" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+            {habits.map(renderHabitCard)}
+          </View>
+        </>
+      ) : (
+        <View style={styles.emptyState}>
+          <Ionicons name="add-circle-outline" size={64} color="#bdc3c7" />
+          <Text style={styles.emptyStateTitle}>No habits yet</Text>
+          <Text style={styles.emptyStateSubtitle}>
+            Tap the "Add Habit" tab to create your first habit and start building better routines!
           </Text>
+          <TouchableOpacity style={styles.emptyStateButton}>
+            <Text style={styles.emptyStateButtonText}>Get Started</Text>
+          </TouchableOpacity>
         </View>
       )}
-
-      {/* Habits List */}
-      <View style={styles.habitsContainer}>
-        <Text style={styles.sectionTitle}>Your Habits</Text>
-        
-        {habits.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="clipboard-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyTitle}>No habits yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Start building healthy habits by adding your first one!
-            </Text>
-          </View>
-        ) : (
-          habits.map((habit) => {
-            const streak = getStreakCount(habit);
-            const completionRate = getCompletionRate(habit);
-            const completedToday = isCompletedToday(habit);
-            
-            return (
-              <View key={habit.id} style={styles.habitCard}>
-                <View style={styles.habitHeader}>
-                  <View style={styles.habitInfo}>
-                    <Text style={styles.habitName}>{habit.name}</Text>
-                    <Text style={styles.habitDescription}>{habit.description}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.checkButton,
-                      completedToday && styles.checkButtonCompleted
-                    ]}
-                    onPress={() => toggleHabitCompletion(habit.id)}
-                  >
-                    <Ionicons
-                      name={completedToday ? "checkmark" : "checkmark-outline"}
-                      size={24}
-                      color={completedToday ? "#fff" : "#007AFF"}
-                    />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.habitStats}>
-                  <View style={styles.habitStat}>
-                    <Ionicons name="flame" size={16} color="#FF9800" />
-                    <Text style={styles.habitStatText}>{streak} day streak</Text>
-                  </View>
-                  <View style={styles.habitStat}>
-                    <Ionicons name="trending-up" size={16} color="#4CAF50" />
-                    <Text style={styles.habitStatText}>{completionRate}% completion</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.habitFrequency}>
-                  <Text style={styles.frequencyText}>
-                    {habit.frequency || 'Daily'} • {habit.category || 'General'}
-                  </Text>
-                </View>
-              </View>
-            );
-          })
-        )}
-      </View>
     </ScrollView>
   );
 }
@@ -257,176 +279,249 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+  },
   header: {
-    padding: 20,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
   },
   greeting: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 4,
+    color: '#2c3e50',
+    marginBottom: 5,
   },
-  date: {
+  headerSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#7f8c8d',
   },
-  statsContainer: {
-    flexDirection: 'row',
+  progressSection: {
     paddingHorizontal: 20,
     marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 4,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statIconContainer: {
-    marginBottom: 8,
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-  progressContainer: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    marginVertical: 12,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 16,
-    paddingHorizontal: 20,
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 15,
   },
-  habitsContainer: {
-    marginBottom: 20,
-  },
-  habitCard: {
-    backgroundColor: '#fff',
-    marginHorizontal: 20,
-    marginBottom: 16,
+  progressCard: {
+    backgroundColor: 'white',
     borderRadius: 16,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  progressPercentage: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#27ae60',
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 20,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#ecf0f1',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#27ae60',
+    borderRadius: 4,
+  },
+  statsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 15,
+  },
+  statCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    flex: 1,
+    marginHorizontal: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
+    borderLeftWidth: 4,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  statContent: {
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  statTitle: {
+    fontSize: 12,
+    color: '#7f8c8d',
+    marginTop: 2,
+  },
+  statSubtitle: {
+    fontSize: 10,
+    color: '#bdc3c7',
+  },
+  habitsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  filterButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'white',
+  },
+  habitCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  habitCardCompleted: {
+    backgroundColor: '#f8fff8',
+    borderWidth: 1,
+    borderColor: '#27ae60',
   },
   habitHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  habitIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
   },
   habitInfo: {
     flex: 1,
-    marginRight: 12,
   },
   habitName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
+    fontWeight: '600',
+    color: '#2c3e50',
     marginBottom: 4,
   },
-  habitDescription: {
+  habitCategory: {
     fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
+    color: '#7f8c8d',
   },
-  checkButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f0f0f0',
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    justifyContent: 'center',
+  habitStatus: {
+    marginLeft: 10,
+  },
+  habitDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  checkButtonCompleted: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+  habitTarget: {
+    flex: 1,
   },
-  habitStats: {
-    flexDirection: 'row',
-    marginBottom: 8,
+  habitTargetText: {
+    fontSize: 14,
+    color: '#7f8c8d',
   },
-  habitStat: {
+  habitStreak: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
   },
-  habitStatText: {
+  habitStreakText: {
     fontSize: 14,
-    color: '#666',
+    color: '#f39c12',
     marginLeft: 4,
-  },
-  habitFrequency: {
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingTop: 8,
-  },
-  frequencyText: {
-    fontSize: 12,
-    color: '#999',
+    fontWeight: '500',
   },
   emptyState: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
-    marginHorizontal: 20,
+    paddingHorizontal: 40,
+    paddingVertical: 60,
   },
-  emptyTitle: {
-    fontSize: 20,
+  emptyStateTitle: {
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginTop: 16,
-    marginBottom: 8,
+    color: '#2c3e50',
+    marginTop: 20,
+    marginBottom: 10,
   },
-  emptySubtitle: {
+  emptyStateSubtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#7f8c8d',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 24,
+    marginBottom: 30,
+  },
+  emptyStateButton: {
+    backgroundColor: '#3498db',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  emptyStateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
