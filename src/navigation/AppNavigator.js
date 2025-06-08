@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -66,20 +66,63 @@ function MainTabNavigator() {
 export default function AppNavigator() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const intervalRef = useRef(null);
+  const isCheckingRef = useRef(false); // Prevent multiple simultaneous checks
 
-  // Check authentication status on app start
+  // Check authentication status on app start and periodically
   useEffect(() => {
     checkAuthStatus();
+    
+    // Check auth status every 2 seconds to detect logout
+    intervalRef.current = setInterval(checkAuthStatus, 2000);
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, []);
 
+  // Clear interval when user logs out to prevent unnecessary checks
+  useEffect(() => {
+    if (!isAuthenticated && intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    } else if (isAuthenticated && !intervalRef.current) {
+      // Restart interval when user logs back in
+      intervalRef.current = setInterval(checkAuthStatus, 2000);
+    }
+  }, [isAuthenticated]);
+
   const checkAuthStatus = async () => {
+    // Prevent multiple simultaneous checks
+    if (isCheckingRef.current) {
+      return;
+    }
+    
+    isCheckingRef.current = true;
+    
     try {
       const userToken = await AsyncStorage.getItem('userToken');
-      setIsAuthenticated(!!userToken);
+      const isAuth = !!userToken;
+      
+      console.log('Checking auth status:', { 
+        currentAuth: isAuthenticated, 
+        isAuth: isAuth, 
+        userToken: userToken || null 
+      });
+      
+      if (isAuth !== isAuthenticated) {
+        console.log('Auth status changed, updating...');
+        setIsAuthenticated(isAuth);
+      }
     } catch (error) {
       console.log('Error checking auth status:', error);
     } finally {
-      setIsLoading(false);
+      if (isLoading) {
+        setIsLoading(false);
+      }
+      isCheckingRef.current = false;
     }
   };
 
@@ -94,7 +137,7 @@ export default function AppNavigator() {
     }
   };
 
-  // Handle logout
+  // Handle logout - this function isn't used but kept for compatibility
   const handleLogout = async () => {
     try {
       await AsyncStorage.removeItem('userToken');
