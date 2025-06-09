@@ -91,10 +91,10 @@ export default function DashboardScreen() {
       await AsyncStorage.setItem('habits', JSON.stringify(updatedHabits));
       
       // Show feedback
-      const habit = habits.find(h => h.id === habitId);
-      const message = habit.completedToday 
-        ? `Great job! You've completed ${habit.name}!` 
-        : `${habit.name} marked as incomplete`;
+      const updatedHabit = updatedHabits.find(h => h.id === habitId);
+      const message = updatedHabit.completedToday 
+        ? `Great job! You've completed ${updatedHabit.name}!` 
+        : `${updatedHabit.name} marked as incomplete`;
       
       Alert.alert('Habit Updated', message);
     } catch (error) {
