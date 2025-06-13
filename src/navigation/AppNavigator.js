@@ -10,9 +10,72 @@ import LoginScreen from '../screens/LoginScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import AddHabitScreen from '../screens/AddHabitScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import BlogScreen from '../screens/BlogScreen';
+import BlogDetailScreen from '../screens/BlogDetailScreen';
+import AdminBlogScreen from '../screens/AdminBlogScreen';
+import CreateBlogScreen from '../screens/CreateBlogScreen';
+import EditBlogScreen from '../screens/EditBlogScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// Blog Stack Navigator for nested navigation
+function BlogStackNavigator() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="BlogList" 
+        component={BlogScreen} 
+        options={{ 
+          title: 'Habit Blog',
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
+      />
+      <Stack.Screen 
+        name="BlogDetail" 
+        component={BlogDetailScreen} 
+        options={{ 
+          title: 'Blog Post',
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
+      />
+      <Stack.Screen 
+        name="AdminBlog" 
+        component={AdminBlogScreen} 
+        options={{ 
+          title: 'Manage Blog',
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
+      />
+      <Stack.Screen 
+        name="CreateBlog" 
+        component={CreateBlogScreen} 
+        options={{ 
+          title: 'Create Post',
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
+      />
+      <Stack.Screen 
+        name="EditBlog" 
+        component={EditBlogScreen} 
+        options={{ 
+          title: 'Edit Post',
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
+      />
+    </Stack.Navigator>
+  );
+}
 
 // Protected Tab Navigator (after login)
 function MainTabNavigator() {
@@ -26,6 +89,8 @@ function MainTabNavigator() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'AddHabit') {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
+          } else if (route.name === 'Blog') {
+            iconName = focused ? 'library' : 'library-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
@@ -34,29 +99,46 @@ function MainTabNavigator() {
         },
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: 'gray',
-        headerStyle: {
-          backgroundColor: '#007AFF',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
+        headerShown: false, // Hide header for tab navigator since stack navigator handles it
       })}
     >
       <Tab.Screen 
         name="Dashboard" 
         component={DashboardScreen} 
-        options={{ title: 'My Habits' }}
+        options={{ 
+          title: 'My Habits',
+          headerShown: true,
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
       />
       <Tab.Screen 
         name="AddHabit" 
         component={AddHabitScreen} 
-        options={{ title: 'Add Habit' }}
+        options={{ 
+          title: 'Add Habit',
+          headerShown: true,
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
+      />
+      <Tab.Screen 
+        name="Blog" 
+        component={BlogStackNavigator} 
+        options={{ title: 'Blog' }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileScreen} 
-        options={{ title: 'Profile' }}
+        options={{ 
+          title: 'Profile',
+          headerShown: true,
+          headerStyle: { backgroundColor: '#007AFF' },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' }
+        }}
       />
     </Tab.Navigator>
   );
