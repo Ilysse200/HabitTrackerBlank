@@ -27,7 +27,20 @@ export default function LoginScreen({ onLogin }) {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
 
-  // Input validation
+  // SIMPLE ADDITION: Define admin emails
+  const adminEmails = [
+    'admin@habittracker.com',
+    'admin@example.com',
+    'superadmin@habittracker.com',
+    // Add more admin emails as needed
+  ];
+
+  // SIMPLE HELPER: Check if email is admin
+  const isAdminEmail = (email) => {
+    return adminEmails.includes(email.toLowerCase());
+  };
+
+  // Input validation (unchanged)
   const validateForm = () => {
     const newErrors = {};
 
@@ -63,27 +76,34 @@ export default function LoginScreen({ onLogin }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
+  // MODIFIED: Handle form submission with admin check
   const handleSubmit = () => {
     if (validateForm()) {
       // Simulate API call
       setTimeout(() => {
+        // SIMPLE ADDITION: Determine role based on email
+        const userRole = isAdminEmail(formData.email) ? 'admin' : 'user';
+        
         const userData = {
           email: formData.email,
           firstName: formData.firstName || 'User',
           lastName: formData.lastName || '',
+          role: userRole, // ADDED: Include role based on email
         };
         
         onLogin(userData);
+        
+        // ENHANCED: Show role in success message
+        const roleText = userRole === 'admin' ? 'Admin' : 'User';
         Alert.alert(
           'Success!', 
-          isLoginMode ? 'Logged in successfully!' : 'Account created successfully!'
+          `${isLoginMode ? 'Logged in' : 'Account created'} successfully as ${roleText}!`
         );
       }, 500);
     }
   };
 
-  // Update form data
+  // Update form data (unchanged)
   const updateFormData = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -99,7 +119,7 @@ export default function LoginScreen({ onLogin }) {
     }
   };
 
-  // Toggle between login and registration
+  // Toggle between login and registration (unchanged)
   const toggleMode = () => {
     setIsLoginMode(!isLoginMode);
     setErrors({});
@@ -123,6 +143,12 @@ export default function LoginScreen({ onLogin }) {
           <Text style={styles.subtitle}>
             {isLoginMode ? 'Welcome back!' : 'Create your account'}
           </Text>
+          {/* OPTIONAL: Show admin email hint */}
+          <View style={styles.adminHint}>
+            <Text style={styles.hintText}>
+              💡 Use admin@habittracker.com to access admin features
+            </Text>
+          </View>
         </View>
 
         <View style={styles.form}>
@@ -159,21 +185,30 @@ export default function LoginScreen({ onLogin }) {
             </>
           )}
 
-          {/* Email Input */}
+          {/* Email Input with admin indicator */}
           <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              placeholder="Email"
-              value={formData.email}
-              onChangeText={(text) => updateFormData('email', text)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-            />
+            <View style={styles.emailContainer}>
+              <TextInput
+                style={[styles.input, errors.email && styles.inputError]}
+                placeholder="Email"
+                value={formData.email}
+                onChangeText={(text) => updateFormData('email', text)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+              />
+              {/* SIMPLE ADDITION: Show admin indicator */}
+              {formData.email && isAdminEmail(formData.email) && (
+                <View style={styles.adminBadge}>
+                  <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
+                  <Text style={styles.adminBadgeText}>Admin</Text>
+                </View>
+              )}
+            </View>
             {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
 
-          {/* Password Input */}
+          {/* Password Input (unchanged) */}
           <View style={styles.inputContainer}>
             <View style={styles.passwordContainer}>
               <TextInput
@@ -198,7 +233,7 @@ export default function LoginScreen({ onLogin }) {
             {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
-          {/* Confirm Password (Registration only) */}
+          {/* Confirm Password (Registration only, unchanged) */}
           {!isLoginMode && (
             <View style={styles.inputContainer}>
               <TextInput
@@ -215,14 +250,14 @@ export default function LoginScreen({ onLogin }) {
             </View>
           )}
 
-          {/* Submit Button */}
+          {/* Submit Button (unchanged) */}
           <TouchableOpacity style={styles.button} onPress={handleSubmit}>
             <Text style={styles.buttonText}>
               {isLoginMode ? 'Login' : 'Create Account'}
             </Text>
           </TouchableOpacity>
 
-          {/* Toggle Mode */}
+          {/* Toggle Mode (unchanged) */}
           <TouchableOpacity style={styles.toggleButton} onPress={toggleMode}>
             <Text style={styles.toggleText}>
               {isLoginMode 
@@ -263,6 +298,20 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  // NEW: Admin hint styles
+  adminHint: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: '#fff3cd',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
+  },
+  hintText: {
+    fontSize: 12,
+    color: '#856404',
+    textAlign: 'center',
+  },
   form: {
     backgroundColor: 'white',
     borderRadius: 15,
@@ -283,6 +332,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 20,
   },
+  // NEW: Email container for admin badge
+  emailContainer: {
+    position: 'relative',
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -293,6 +346,24 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: '#ff4444',
+  },
+  // NEW: Admin badge styles
+  adminBadge: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f5e8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  adminBadgeText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   passwordContainer: {
     flexDirection: 'row',
