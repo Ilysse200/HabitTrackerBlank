@@ -51,7 +51,7 @@ export default function BlogScreen({ navigation }) {
             id: '1',
             title: 'Building Better Habits: A Beginner\'s Guide',
             content: 'Starting a new habit can be challenging, but with the right approach, you can make lasting changes. The key is to start small and be consistent...',
-            author: 'Admin',
+            author: 'Katrina',
             createdAt: new Date().toISOString(),
             image: null,
             summary: 'Learn the fundamentals of habit formation and how to build lasting positive changes in your life.'
@@ -60,7 +60,7 @@ export default function BlogScreen({ navigation }) {
             id: '2',
             title: 'The Science Behind Habit Formation',
             content: 'Research shows that habits are formed through a neurological loop consisting of a cue, routine, and reward. Understanding this process can help you...',
-            author: 'Admin',
+            author: 'Katrina',
             createdAt: new Date(Date.now() - 86400000).toISOString(), // Yesterday
             image: null,
             summary: 'Discover the psychological and neurological processes that drive habit formation.'

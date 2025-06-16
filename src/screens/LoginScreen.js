@@ -76,7 +76,7 @@ export default function LoginScreen({ onLogin }) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // MODIFIED: Handle form submission with admin check
+  // Handle submit with admin check
   const handleSubmit = () => {
     if (validateForm()) {
       // Simulate API call
@@ -91,8 +91,11 @@ export default function LoginScreen({ onLogin }) {
           role: userRole, // ADDED: Include role based on email
         };
         
-        onLogin(userData);
-        
+        if(isLoginMode){
+          onLogin(userData);
+        } else{
+          toggleMode();
+        }
         // ENHANCED: Show role in success message
         const roleText = userRole === 'admin' ? 'Admin' : 'User';
         Alert.alert(
@@ -145,9 +148,9 @@ export default function LoginScreen({ onLogin }) {
           </Text>
           {/* OPTIONAL: Show admin email hint */}
           <View style={styles.adminHint}>
-            <Text style={styles.hintText}>
+            {/* <Text style={styles.hintText}>
               💡 Use admin@habittracker.com to access admin features
-            </Text>
+            </Text> */}
           </View>
         </View>
 
