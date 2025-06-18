@@ -168,12 +168,12 @@ export default function LoginScreen({ onLogin }) {
             {isLoginMode ? "Welcome back!" : "Create your account"}
           </Text>
           {/* OPTIONAL: Show admin email hint */}
-          <View style={styles.adminHint}>
+          {/* <View style={styles.adminHint}> */}
             {/* <Text style={styles.hintText}>
               💡 Use admin@habittracker.com to access admin features
             </Text> */}
           </View>
-        </View>
+        {/* </View> */}
 
         <View style={styles.form}>
           {/* Registration Fields */}
