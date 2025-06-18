@@ -88,9 +88,7 @@ export default function LoginScreen({ onLogin }) {
 
     const body = isLoginMode
       ? { email, password }
-      : { email, 
-        password, 
-        name:fullName };
+      : { email, password, name: fullName };
 
     fetch(url, {
       method: "POST",
@@ -169,10 +167,10 @@ export default function LoginScreen({ onLogin }) {
           </Text>
           {/* OPTIONAL: Show admin email hint */}
           {/* <View style={styles.adminHint}> */}
-            {/* <Text style={styles.hintText}>
+          {/* <Text style={styles.hintText}>
               💡 Use admin@habittracker.com to access admin features
             </Text> */}
-          </View>
+        </View>
         {/* </View> */}
 
         <View style={styles.form}>
@@ -184,10 +182,7 @@ export default function LoginScreen({ onLogin }) {
                   style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}
                 >
                   <TextInput
-                    style={[
-                      styles.input,
-                      errors.fullName && styles.inputError,
-                    ]}
+                    style={[styles.input, errors.fullName && styles.inputError]}
                     placeholder="Full Name"
                     value={formData.fullName}
                     onChangeText={(text) => updateFormData("fullName", text)}
@@ -250,10 +245,14 @@ export default function LoginScreen({ onLogin }) {
                   color="#666"
                 />
               </TouchableOpacity>
+              
             </View>
             {errors.password && (
               <Text style={styles.errorText}>{errors.password}</Text>
             )}
+            <Text style={styles.forgotPass}>
+              {isLoginMode? 'Forgot Password': ''}
+              </Text>
           </View>
 
           {/* Confirm Password (Registration only, unchanged) */}
@@ -432,4 +431,9 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontSize: 16,
   },
+  forgotPass:{
+    marginTop:7,
+    color:"#007AFF",
+    fontSize:16,
+  }
 });

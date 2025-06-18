@@ -15,7 +15,7 @@ import BlogDetailScreen from '../screens/BlogDetailScreen';
 import AdminBlogScreen from '../screens/AdminBlogScreen';
 import CreateBlogScreen from '../screens/CreateBlogScreen';
 import EditBlogScreen from '../screens/EditBlogScreen';
-
+import ForgotPasswordScreen from '../screens/ForgotPassword';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
