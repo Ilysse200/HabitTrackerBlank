@@ -24,6 +24,21 @@ export default function BlogDetailScreen({ route, navigation }) {
     });
   };
 
+  const fetchBlogs = async () =>{
+
+
+    const response = await fetch("http://192.168.1.119:3000/blog/getBlogs");
+    //Check what the response returns 
+    if(!response.ok){
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const formatResponse = await response.json();
+    console.log(JSON.stringify(data, null, 2));
+    
+  }
+
+
   const handleShare = async () => {
     try {
       await Share.share({

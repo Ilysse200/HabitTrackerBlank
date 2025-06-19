@@ -82,8 +82,8 @@ export default function LoginScreen({navigation, onLogin }) {
     if (!validateForm()) return;
     const { email, password, fullName } = formData;
     const url = isLoginMode
-      ? "http://192.168.0.103:3000/users/login"
-      : "http://192.168.0.103:3000/users/register";
+      ? "http://192.168.1.213:3000/users/login"
+      : "http://192.168.1.213:3000/users/register";
 
     const body = isLoginMode
       ? { email, password }
