@@ -52,9 +52,9 @@ export default function BlogDetailScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {blog.image && (
+      {/* {blog.image && (
         <Image source={{ uri: blog.image }} style={styles.heroImage} />
-      )}
+      )} */}
       
       <View style={styles.content}>
         <Text style={styles.title}>{blog.title}</Text>
@@ -62,7 +62,7 @@ export default function BlogDetailScreen({ route, navigation }) {
         <View style={styles.metaContainer}>
           <View style={styles.authorInfo}>
             <Ionicons name="person-circle" size={20} color="#007AFF" />
-            <Text style={styles.authorName}>{blog.author}</Text>
+            <Text style={styles.authorName}>{blog.author.name}</Text>
           </View>
           <View style={styles.dateInfo}>
             <Ionicons name="time" size={16} color="#666" />
@@ -70,6 +70,12 @@ export default function BlogDetailScreen({ route, navigation }) {
           </View>
         </View>
 
+
+
+        <View style={styles.content}>
+          <Ionicons name="document-text" size={20} color="#007AFF"/>
+          <Text style={styles.contentText}>{blog.body}</Text>
+        </View>
         <View style={styles.actionBar}>
           <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
             <Ionicons name="share-outline" size={20} color="#007AFF" />
@@ -81,7 +87,7 @@ export default function BlogDetailScreen({ route, navigation }) {
 
         <Text style={styles.contentText}>{blog.content}</Text>
 
-        {blog.tags && blog.tags.length > 0 && (
+        {/* {blog.tags && blog.tags.length > 0 && (
           <View style={styles.tagsContainer}>
             <Text style={styles.tagsTitle}>Tags:</Text>
             <View style={styles.tagsWrapper}>
@@ -92,7 +98,7 @@ export default function BlogDetailScreen({ route, navigation }) {
               ))}
             </View>
           </View>
-        )}
+        )} */}
       </View>
     </ScrollView>
   );
@@ -110,6 +116,11 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  textContent:{
+    fontSize:16,
+    marginTop:2,
+    fontWeight:100,
   },
   title: {
     fontSize: 28,
