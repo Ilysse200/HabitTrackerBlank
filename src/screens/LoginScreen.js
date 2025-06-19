@@ -12,10 +12,9 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
 const { width, height } = Dimensions.get("window");
 
-export default function LoginScreen({ onLogin }) {
+export default function LoginScreen({navigation, onLogin }) {
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [formData, setFormData] = useState({
     email: "",
@@ -245,14 +244,17 @@ export default function LoginScreen({ onLogin }) {
                   color="#666"
                 />
               </TouchableOpacity>
-              
             </View>
             {errors.password && (
               <Text style={styles.errorText}>{errors.password}</Text>
             )}
-            <Text style={styles.forgotPass}>
-              {isLoginMode? 'Forgot Password': ''}
-              </Text>
+            {isLoginMode && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate("ForgotPassword")}
+              >
+                <Text style={styles.forgotPass}>Forgot Password?</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Confirm Password (Registration only, unchanged) */}
@@ -307,6 +309,7 @@ const styles = StyleSheet.create({
     padding: 20,
     minHeight: height,
   },
+  
   header: {
     alignItems: "center",
     marginBottom: 40,
@@ -431,9 +434,9 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontSize: 16,
   },
-  forgotPass:{
-    marginTop:7,
-    color:"#007AFF",
-    fontSize:16,
-  }
+  forgotPass: {
+    marginTop: 7,
+    color: "#007AFF",
+    fontSize: 16,
+  },
 });
