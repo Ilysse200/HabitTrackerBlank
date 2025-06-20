@@ -13,36 +13,81 @@ import { Ionicons } from '@expo/vector-icons';
 export default function BlogDetailScreen({ route, navigation }) {
   const { blog } = route.params;
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const fetchBlogs = async () =>{
-
-
-    const response = await fetch("http://192.168.0.107:3000/blog/getBlogs");
-    //Check what the response returns 
-    if(!response.ok){
-      throw new Error(`HTTP error! status: ${response.status}`);
+  // Utility function to get author information
+  const getAuthorInfo = (blog) => {
+    // Check if there's a direct author object
+    if (blog.author && blog.author.name) {
+      return {
+        name: blog.author.name,
+        email: blog.author.email,
+        role: blog.author.role
+      };
     }
     
-    const formatResponse = await response.json();
-    console.log(JSON.stringify(data, null, 2));
+    // Check if there are blogAuthors (array)
+    if (blog.blogAuthors && blog.blogAuthors.length > 0) {
+      const firstAuthor = blog.blogAuthors[0];
+      return {
+        name: firstAuthor.name,
+        email: firstAuthor.email,
+        role: firstAuthor.role
+      };
+    }
     
-  }
+    // Fallback
+    return {
+      name: 'Unknown Author',
+      email: '',
+      role: 'contributor'
+    };
+  };
 
+  // Utility function to get blog content
+  const getBlogContent = (blog) => {
+    // Prefer 'body' field as that's what your API returns
+    return blog.body || blog.content || 'No content available';
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
+
+  const fetchBlogs = async () => {
+    try {
+      const response = await fetch("http://172.20.10.2:3000/blog/getBlogs");
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const formatResponse = await response.json();
+      console.log(JSON.stringify(formatResponse, null, 2)); // Fixed: was 'data' instead of 'formatResponse'
+      
+      return formatResponse;
+    } catch (error) {
+      console.error('Error fetching blogs:', error);
+      throw error;
+    }
+  };
 
   const handleShare = async () => {
     try {
+      const content = getBlogContent(blog);
+      const shareContent = content.length > 200 ? content.substring(0, 200) + '...' : content;
+      
       await Share.share({
-        message: `Check out this blog post: "${blog.title}"\n\n${blog.content.substring(0, 200)}...`,
+        message: `Check out this blog post: "${blog.title}"\n\n${shareContent}`,
         title: blog.title,
       });
     } catch (error) {
@@ -50,32 +95,35 @@ export default function BlogDetailScreen({ route, navigation }) {
     }
   };
 
+  // Get normalized data
+  const authorInfo = getAuthorInfo(blog);
+  const blogContent = getBlogContent(blog);
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* {blog.image && (
+      {blog.image && (
         <Image source={{ uri: blog.image }} style={styles.heroImage} />
-      )} */}
+      )}
       
       <View style={styles.content}>
-        <Text style={styles.title}>{blog.title}</Text>
+        <Text style={styles.title}>{blog.title || 'Untitled'}</Text>
         
         <View style={styles.metaContainer}>
           <View style={styles.authorInfo}>
             <Ionicons name="person-circle" size={20} color="#007AFF" />
-            <Text style={styles.authorName}>{blog.author.name}</Text>
+            <Text style={styles.authorName}>{authorInfo.name}</Text>
+            {authorInfo.role && (
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleText}>{authorInfo.role}</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.dateInfo}>
+          {/* <View style={styles.dateInfo}>
             <Ionicons name="time" size={16} color="#666" />
             <Text style={styles.date}>{formatDate(blog.createdAt)}</Text>
-          </View>
+          </View> */}
         </View>
 
-
-
-        <View style={styles.content}>
-          <Ionicons name="document-text" size={20} color="#007AFF"/>
-          <Text style={styles.contentText}>{blog.body}</Text>
-        </View>
         <View style={styles.actionBar}>
           <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
             <Ionicons name="share-outline" size={20} color="#007AFF" />
@@ -85,20 +133,34 @@ export default function BlogDetailScreen({ route, navigation }) {
 
         <View style={styles.divider} />
 
-        <Text style={styles.contentText}>{blog.content}</Text>
+        <View style={styles.contentContainer}>
+          <Ionicons name="document-text" size={20} color="#007AFF" style={styles.contentIcon} />
+          <Text style={styles.contentText}>{blogContent}</Text>
+        </View>
 
-        {/* {blog.tags && blog.tags.length > 0 && (
-          <View style={styles.tagsContainer}>
-            <Text style={styles.tagsTitle}>Tags:</Text>
-            <View style={styles.tagsWrapper}>
-              {blog.tags.map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>#{tag}</Text>
-                </View>
-              ))}
-            </View>
+        {/* Display additional metadata if available */}
+        {blog.updatedAt && blog.updatedAt !== blog.createdAt && (
+          <View style={styles.updateInfo}>
+            <Ionicons name="create-outline" size={16} color="#666" />
+            <Text style={styles.updateText}>
+              Last updated: {formatDate(blog.updatedAt)}
+            </Text>
           </View>
-        )} */}
+        )}
+
+        {/* Show multiple authors if available */}
+        {blog.blogAuthors && blog.blogAuthors.length > 1 && (
+          <View style={styles.coAuthorsContainer}>
+            <Text style={styles.coAuthorsTitle}>Co-authors:</Text>
+            {blog.blogAuthors.slice(1).map((author, index) => (
+              <View key={index} style={styles.coAuthor}>
+                <Ionicons name="person" size={16} color="#007AFF" />
+                <Text style={styles.coAuthorName}>{author.name}</Text>
+                <Text style={styles.coAuthorRole}>({author.role})</Text>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -117,11 +179,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
-  textContent:{
-    fontSize:16,
-    marginTop:2,
-    fontWeight:100,
-  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -134,16 +191,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    flexWrap: 'wrap',
   },
   authorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   authorName: {
     fontSize: 16,
     color: '#007AFF',
     marginLeft: 8,
     fontWeight: '600',
+  },
+  roleBadge: {
+    backgroundColor: '#e8f4fd',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  roleText: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: '500',
   },
   dateInfo: {
     flexDirection: 'row',
@@ -179,39 +250,61 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     marginVertical: 16,
   },
+  contentContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  contentIcon: {
+    marginRight: 8,
+    marginTop: 2,
+  },
   contentText: {
     fontSize: 16,
     lineHeight: 24,
     color: '#333',
     textAlign: 'justify',
+    flex: 1,
   },
-  tagsContainer: {
-    marginTop: 24,
+  updateInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#f0f0f0',
   },
-  tagsTitle: {
-    fontSize: 16,
+  updateText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 6,
+    fontStyle: 'italic',
+  },
+  coAuthorsContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  coAuthorsTitle: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
     marginBottom: 8,
   },
-  tagsWrapper: {
+  coAuthor: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginBottom: 4,
   },
-  tag: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  tagText: {
-    color: '#fff',
-    fontSize: 12,
+  coAuthorName: {
+    fontSize: 14,
+    color: '#007AFF',
+    marginLeft: 6,
     fontWeight: '500',
+  },
+  coAuthorRole: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
   },
 });

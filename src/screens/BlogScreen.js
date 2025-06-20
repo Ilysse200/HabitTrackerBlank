@@ -21,7 +21,7 @@ export default function BlogScreen({ navigation }) {
 
   const fetchBlogs = async () => {
     try {
-      const response = await fetch("http://192.168.0.107:3000/blog/getBlogs");
+      const response = await fetch("http://172.20.10.2:3000/blog/getBlogs");
       //Response check to prevent parsing an error 
       if(!response.ok){
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -150,7 +150,7 @@ export default function BlogScreen({ navigation }) {
           <View style={styles.authorInfo}>
             <Ionicons name="person-circle" size={16} color="#666" />
             <Text style={styles.authorName}>
-              {item.author?.name || "Unknown"}
+              {item.author?.name || item.blogAuthors?.[0]?.name || "Unknown"}
             </Text>
           </View>
           <Text style={styles.blogDate}>
