@@ -21,7 +21,7 @@ export default function BlogScreen({ navigation }) {
 
   const fetchBlogs = async () => {
     try {
-      const response = await fetch("http://192.168.1.213:3000/blog/getBlogs");
+      const response = await fetch("http://192.168.0.107:3000/blog/getBlogs");
       //Response check to prevent parsing an error 
       if(!response.ok){
         throw new Error(`HTTP error! status: ${response.status}`);
