@@ -11,6 +11,7 @@ import {
   Alert,
   Dimensions,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 const { width, height } = Dimensions.get("window");
 
@@ -79,51 +80,46 @@ export default function LoginScreen({navigation, onLogin }) {
 
   // Handle submit with admin check
   const handleSubmit = () => {
-    if (!validateForm()) return;
-    const { email, password, fullName } = formData;
-    const url = isLoginMode
-      ? "http://172.20.10.2:3000/users/login"
-      : "http://172.20.10.2:3000/users/register";
+  if (!validateForm()) return;
 
-    const body = isLoginMode
-      ? { email, password }
-      : { email, password, name: fullName };
+  const { email, password, fullName } = formData;
+  const url = isLoginMode
+    ? "http://172.20.10.2:3000/users/login"
+    : "http://172.20.10.2:3000/users/register";
 
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+  const body = isLoginMode
+    ? { email, password }
+    : { email, password, name: fullName };
+
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Something went wrong");
+      }
+      return res.json();
     })
-      .then(async (res) => {
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.message || "Something went wrong");
-        }
-        return res.json();
-      })
+    .then(async (data) => {
+      const user = data?.data?.user;
 
-      .then((data) => {
-        const userRole = isAdminEmail(email) ? "admin" : "user";
-        const userData = {
-          email,
-          fullName: data.fullName || fullName,
-        };
+      if (!user) throw new Error("User data not found in response");
 
-        if (isLoginMode) {
-          onLogin(userData);
-        } else {
-          toggleMode(); //Login after registration
-        }
+      // ✅ Save full user object including role
+      await AsyncStorage.setItem("userData", JSON.stringify(user));
 
-        Alert.alert(
-          "Success!",
-          `${isLoginMode ? "Logged in" : "Account created successfully"}`
-        );
-      })
-      .catch((err) => {
-        Alert.alert("Error", err.message);
-      });
-  };
+      // ✅ Call login handler with role-aware data
+      onLogin(user);
+
+      Alert.alert("Success", `Logged in as ${user.role}`);
+    })
+    .catch((err) => {
+      Alert.alert("Error", err.message);
+    });
+};
 
   // Update form data (unchanged)
   const updateFormData = (field, value) => {
